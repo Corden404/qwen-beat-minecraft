@@ -1,5 +1,55 @@
 # Astra and JEV Minecraft agent
 
+## Local Qwen 3.5 9B on Windows
+
+This checkout also supports a local `llama-server` at `http://127.0.0.1:8081/v1`,
+with model alias `qwen3.5-9b`. One loaded model supplies both the high-level plan
+and every bounded action choice. JSON schemas constrain the responses. The game
+still uses the upstream fixed seed, surveyed Nether route, vanilla Survival on
+Peaceful, and read-only dragon sensor; this is not a random-seed benchmark.
+
+With existing Node 22+, Python, and a Java 17 JDK on PATH, run:
+
+```powershell
+.\windows\setup.ps1
+```
+
+Review the [Minecraft EULA](https://aka.ms/MinecraftEULA), then set `eula=true`
+in the generated `server/eula.txt` if you accept it. Start the existing local
+Qwen service, then run:
+
+```powershell
+.\windows\start.ps1
+# Live native picture and inventory: http://127.0.0.1:3078/view
+.\windows\stop.ps1
+```
+
+Each start uses a fresh run and world name. The hidden native Java 1.16.5 client
+records its framebuffer at 960×540 / 20 fps without moving your desktop cursor.
+Raw continuous video, game events, and victory verification are in `runs/<run>/`.
+The supervisor saves the world and finalizes the video before stopping its own
+server, display client, relay, and agent. It leaves the shared Qwen service running.
+A stopped or failed run is preserved and is not described as a victory.
+
+All newly installed dependencies, npm/Python caches, temporary files, game assets,
+worlds, and videos stay in this project directory. Existing Node, Python, Java,
+and the model outside the project are reused. Python packages use the Tsinghua
+mirror; npm packages and Minecraft/Maven artifacts use their official upstreams
+because the Tsinghua mirror does not provide those repositories. No global npm
+or Python package installation, registry edit, service, or scheduled task is used.
+Windows and GPU drivers may still create their own system caches or pagefile activity.
+
+```powershell
+.\windows\clean.ps1                 # Keep recorded runs
+.\windows\clean.ps1 -IncludeRuns    # Include recorded runs
+```
+
+Cleanup verifies that project processes are stopped, validates each target is
+inside the project, and moves generated files to `.trash/cleanup-<timestamp>/`.
+It retains source and the shared model/tools. This is recoverable cleanup; disk
+space is reclaimed when you choose to empty `.trash`. Re-run setup to restore
+dependencies. The project does not modify your existing `.minecraft` installation.
+
 This project uses GPT-6 Astra or GPT-5.6 Sol to plan and JEV to select player actions in Minecraft Java 1.16.5. It uses the official vanilla server and Mineflayer. A read-only Java sensor can report the exact dragon head position. It does not change game rules or entity state. Each selected action is sent to the game through the normal player protocol.
 
 ## Latest verified result

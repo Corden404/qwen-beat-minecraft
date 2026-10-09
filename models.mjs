@@ -1,6 +1,8 @@
 import {execFileSync} from 'node:child_process';
 export const plannerModel=process.env.PLANNER_MODEL||'openai/gpt-6-astra';
-export const plannerName=plannerModel.includes('sol')?'Sol':'Astra';
+export const plannerName=plannerModel.includes('qwen')?'Qwen':plannerModel.includes('sol')?'Sol':'Astra';
+export const controllerModel=process.env.CONTROLLER_MODEL||'typesafe/jev-1.13';
+export const controllerName=controllerModel.includes('qwen')?'Qwen':'JEV';
 let key;
 export async function request(path,body){
  if(process.env.MODEL_RELAY){for(let attempt=0;attempt<4;attempt++){try{const response=await fetch(process.env.MODEL_RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path,body}),signal:AbortSignal.timeout(125000)});const data=await response.json();if(!response.ok||data.error)throw Error(data.error||'Local model relay failed');return data;}catch(error){if(attempt===3||!(/fetch failed|timeout|timed out|ECONNRESET|socket|5\d\d/i.test(error.message)))throw error;console.error('Temporary model request failure; retry '+(attempt+1));await new Promise(r=>setTimeout(r,1000*2**attempt));}}}
@@ -14,10 +16,10 @@ export function compactObservation(state){const knownSeed=state.knownSeed?{...st
 export async function decide(state,options){
  state=compactObservation(state);
  const criteria=Object.fromEntries(options.map((o,i)=>['a'+i,o.description]));
- const body={model:'typesafe/jev-1.13',state:JSON.stringify(state),questions:{action:{type:'choice',instructions:'Control the Minecraft player. Choose one available action that best advances the current planner objective. FIRST choose an offered escape action when a breath cloud threatens the player. Clouds marked safeAtCurrentHeight are vertically separated on verified ground; distance alone does not make them dangerous. Never eat or wait inside a breath cloud. After reaching safety, if health is below 16, eat available food until the food bar is full so health can regenerate. Survival has priority over item reserve targets. Prefer a boat for long water crossings. Craft one before departure, place and board it at water, then row. Dismount and recover it at land. Swim only for short approaches; use side detours when blocked. Never pathfind along the sea floor. Check current inventory; do not keep crafting or collecting after the target is met. Avoid failed actions and needless waiting. Movement and mining options include standard pathfinding, but you own the choice.',criteria}}};
+ const body={model:controllerModel,state:JSON.stringify(state),questions:{action:{type:'choice',instructions:'Control the Minecraft player. Choose one available action that best advances the current planner objective. FIRST choose an offered escape action when a breath cloud threatens the player. Clouds marked safeAtCurrentHeight are vertically separated on verified ground; distance alone does not make them dangerous. Never eat or wait inside a breath cloud. After reaching safety, if health is below 16, eat available food until the food bar is full so health can regenerate. Survival has priority over item reserve targets. Prefer a boat for long water crossings. Craft one before departure, place and board it at water, then row. Dismount and recover it at land. Swim only for short approaches; use side detours when blocked. Never pathfind along the sea floor. Check current inventory; do not keep crafting or collecting after the target is met. Avoid failed actions and needless waiting. Movement and mining options include standard pathfinding, but you own the choice.',criteria}}};
  const r=await request('/api/alpha/decisions',body);const answer=r.data.answers?.action;
  const selected=options[Number(answer?.choice?.slice(1))];
- if(!selected||!Object.hasOwn(criteria,answer.choice))throw new Error('Invalid JEV action');
+ if(!selected||!Object.hasOwn(criteria,answer.choice))throw new Error('Invalid controller action');
  return {...r,selected,body};
 }
 export async function plan(state){

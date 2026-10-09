@@ -1,5 +1,5 @@
 // Keep game actions independent of planner response time after the initial plan.
-export function asyncPlanner({getState, plan, onPlan, log=()=>{}, intervalMs=15000, now=Date.now}) {
+export function asyncPlanner({getState, plan, onPlan, log=()=>{}, intervalMs=Number(process.env.PLANNER_INTERVAL_MS||15000), now=Date.now}) {
  let pending=null, lastStage=null, lastStarted=-Infinity, closed=false;
  function refresh(force=false) {
   if(closed||pending)return pending;

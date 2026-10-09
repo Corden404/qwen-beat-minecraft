@@ -122,3 +122,8 @@ optimization/seed-route.svg
 *secrets*.yml
 *secret*.json
 *key*.json
+
+# Project-local runtime, caches, recordings, and recoverable cleanup
+.runtime/
+.trash/
+native-client/native-preview*.png
