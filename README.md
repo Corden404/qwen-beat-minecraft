@@ -1,172 +1,175 @@
-# Astra and JEV Minecraft agent
+# Qwen 3.5 9B Minecraft Agent
 
-## Local Qwen 3.5 9B on Windows
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-This checkout also supports a local `llama-server` at `http://127.0.0.1:8081/v1`,
-with model alias `qwen3.5-9b`. One loaded model supplies both the high-level plan
-and every bounded action choice. JSON schemas constrain the responses. The game
-still uses the upstream fixed seed, surveyed Nether route, vanilla Survival on
-Peaceful, and read-only dragon sensor; this is not a random-seed benchmark.
+Run local Qwen 3.5 9B as both planner and action selector in Minecraft Java 1.16.5, with a visible native client, continuous recording, and saved victory evidence.
 
-The local run `qwen-win-04` completed in **13 minutes 55.391 seconds** from
-recording start to the exit event. Qwen supplied 16 plans and all 137 action
-choices. Six bed blasts killed the dragon; the player exited with full health
-and no deaths. The continuous native video is **14 minutes 3.500 seconds**,
-960×540 at 20 fps, without audio. All 18 full-run checks and eight route/camera/UI
-checks passed, including full video decoding, saved-world dragon state, fresh
-empty inventory, both Qwen model identities, and unchanged run source.
-The run had eight failed actions that recovered through subsequent model
-choices. No operator repair or restart occurred within this successful run.
-Its local video and evidence are in `runs/qwen-win-04/`; generated artifacts
-remain excluded from Git.
+This Windows adaptation is based on [rmalde/minecraft-agent](https://github.com/rmalde/minecraft-agent). The upstream uses Astra/Sol for planning and JEV for action selection; this version sends both roles to one local Qwen service through a schema-constrained relay.
 
-With existing Node 22+, Python, and a Java 17 JDK on PATH, run:
+## Scope and control
+
+The agent starts with an empty inventory in a fresh **Survival / Peaceful** world, collects supplies, travels through the Nether, enters the End, kills the dragon with beds, and returns through the exit portal.
+
+The seed is `8398967436125155523`, with a previously surveyed route. It contains village supplies and a naturally active End portal, so this route does not require blaze rods or crafting Eyes of Ender. Known coordinates are supplied to the agent.
+
+Qwen receives structured game observations and chooses bounded actions. Mineflayer executes pathfinding and normal player interactions. A read-only server sensor exposes dragon state for combat timing. The native client supplies the recording; decisions use structured state rather than screenshots or individual keyboard inputs. This demonstrates completion under these conditions, rather than general random-seed Minecraft competence.
+
+## Verified local result
+
+The preserved run `qwen-win-04` completed with these results:
+
+| Metric | Result |
+| --- | --- |
+| Planner / action selector | Qwen 3.5 9B / Qwen 3.5 9B |
+| Tested weights | GGUF Q4_K_M |
+| Completion time from recording start | 13 min 55.391 sec |
+| Continuous video duration | 14 min 3.500 sec |
+| Plans / action selections | 16 / 137 |
+| Bed explosions / deaths | 6 / 0 |
+| Health on exit | 20 / 20 |
+| Failed actions | 8, followed by recovery |
+| Operator repairs / restarts during this run | 0 / 0 |
+| Original recording | 960 × 540, 20 fps, no audio |
+
+All 18 full-run verification checks and eight additional route/camera/UI checks passed. Evidence includes complete video decoding, saved-world dragon state, a fresh empty inventory, recorded model identities, and source hashes. This is one verified successful run; earlier failed trials remain local. It is not a measured success rate.
+
+## Requirements
+
+- Windows and PowerShell; the supplied Windows workflow was verified locally.
+- Node.js 22+, Python with `pip`, and a Java 17 **JDK** providing `javac` and `jar`.
+- Downloaded Qwen weights and an independently started local `llama-server`. The project does not download or start the model service.
+- Network access during setup for npm, FFmpeg, Minecraft binaries/assets, and Maven dependencies.
+- Available ports: `8081` for the default model service; `25576`, `25578`, `3078`, `3093`, and `3099` for project components.
+
+The tested configuration used Qwen 3.5 9B Q4_K_M, an RTX 4060 Laptop GPU with 8 GiB VRAM, a 4096-token context, and one inference slot. Resource requirements and speed vary with quantization and runtime settings.
+
+## Windows quick start
+
+Run commands from the repository root.
+
+### 1. Install dependencies
 
 ```powershell
 .\windows\setup.ps1
 ```
 
-Review the [Minecraft EULA](https://aka.ms/MinecraftEULA), then set `eula=true`
-in the generated `server/eula.txt` if you accept it. Start the existing local
-Qwen service, then run:
+If the JDK cannot be discovered through `javac.exe`, set its directory first:
 
 ```powershell
-.\windows\start.ps1
-# Live native picture and inventory: http://127.0.0.1:3078/view
+$env:MC_JAVA_HOME = 'D:\Tools\jdk-17'
+.\windows\setup.ps1
+```
+
+Setup installs dependencies, downloads Minecraft Java 1.16.5, builds the read-only sensor and native capture adapter, and creates `.runtime/config.json`. Python packages use the Tsinghua mirror; npm and Minecraft/Maven dependencies use their upstream repositories.
+
+### 2. Accept the Minecraft EULA
+
+Read the [Minecraft EULA](https://aka.ms/MinecraftEULA). If you accept it, change the generated `server/eula.txt` to contain:
+
+```text
+eula=true
+```
+
+The launcher refuses to start without this setting.
+
+### 3. Start the local model
+
+Example for an existing llama.cpp installation; replace both paths with your own:
+
+```powershell
+& 'D:\Tools\llama.cpp\llama-server.exe' `
+  -m 'D:\Models\Qwen3.5-9B-Q4_K_M.gguf' `
+  --alias qwen3.5-9b --host 127.0.0.1 --port 8081 `
+  -c 4096 -np 1 -ngl auto
+
+# Check readiness in another PowerShell window:
+Invoke-RestMethod 'http://127.0.0.1:8081/health'
+```
+
+The runtime must support the JSON Schema response format used by [qwen-relay.mjs](qwen-relay.mjs). The relay disables thinking through `chat_template_kwargs.enable_thinking=false` and uses temperature `0.7`, top-p `0.8`, and top-k `20`.
+
+Defaults are `http://127.0.0.1:8081/v1` and alias `qwen3.5-9b`. To change them, edit `modelBase` and `model` in `.runtime/config.json` after setup, preserving the generated Java/FFmpeg paths. The supervisor also checks the model runtime's `/health`; a generic compatible API without that endpoint is insufficient. Only loopback model endpoints are accepted. Rerunning setup resets these generated settings.
+
+### 4. Start a recorded run
+
+```powershell
+.\windows\start.ps1 -RunId qwen-demo-01 -MaxMinutes 60
+```
+
+Use a new run ID each time. The launcher creates a fresh world, starts the server, relay, agent, and native client, and records the game framebuffer. A visible Minecraft window appears after startup. Progress is at `http://127.0.0.1:3078`; the native picture is at `http://127.0.0.1:3078/view`.
+
+After completion, the supervisor saves the world, finalizes the recording, stops its project processes, and verifies victory evidence. The shared Qwen service stays running. A stopped or failed run is preserved and is not classified as a victory.
+
+To stop early:
+
+```powershell
 .\windows\stop.ps1
 ```
 
-Each start uses a fresh run and world name. The visible native Java 1.16.5 client
-records its framebuffer at 960×540 / 20 fps without moving your desktop cursor.
-Raw continuous video, game events, and victory verification are in `runs/<run>/`.
-The supervisor saves the world and finalizes the video before stopping its own
-server, display client, relay, and agent. It leaves the shared Qwen service running.
-A stopped or failed run is preserved and is not described as a victory.
+Stopping waits for an action boundary, world saving, and video finalization. Avoid forcibly closing the encoder or server while evidence is being written.
 
-All newly installed dependencies, npm/Python caches, temporary files, game assets,
-worlds, and videos stay in this project directory. Existing Node, Python, Java,
-and the model outside the project are reused. Python packages use the Tsinghua
-mirror; npm packages and Minecraft/Maven artifacts use their official upstreams
-because the Tsinghua mirror does not provide those repositories. No global npm
-or Python package installation, registry edit, service, or scheduled task is used.
-Windows and GPU drivers may still create their own system caches or pagefile activity.
+## Recordings, logs, and verification
+
+| Location | Contents |
+| --- | --- |
+| `runs/<run>/full-playthrough.mp4` | Continuous native gameplay |
+| `runs/<run>/events.jsonl` | Model requests/responses, choices, results, and events |
+| `runs/<run>/run-config.json` | Run conditions, model identities, and source hashes |
+| `runs/<run>/status.json` | Progress state |
+| `runs/<run>/victory.json` | Dragon-death and exit-event evidence, when present |
+| `runs/<run>/verification.json` | Saved-world and recording verification |
+| `runs/<run>/source/` | Frozen source snapshot |
+| `server/<run>/` | Saved world, including dragon fight state |
+| `.runtime/runs/<run>/` | Process logs and supervisor diagnostics |
+
+`victory.json` alone is insufficient to establish a verified result. Review the verification report, saved-world dragon state, and full video together. After stopping, repeat verification with:
 
 ```powershell
-.\windows\clean.ps1                 # Keep recorded runs
-.\windows\clean.ps1 -IncludeRuns    # Include recorded runs
+$env:FFMPEG_PATH = (Get-Content .runtime/config.json -Raw | ConvertFrom-Json).ffmpeg
+node verify-run.mjs qwen-demo-01 qwen-demo-01
 ```
 
-Cleanup verifies that project processes are stopped, validates each target is
-inside the project, and moves generated files to `.trash/cleanup-<timestamp>/`.
-It retains source and the shared model/tools. This is recoverable cleanup; disk
-space is reclaimed when you choose to empty `.trash`. Re-run setup to restore
-dependencies. The project does not modify your existing `.minecraft` installation.
+A separate local export for `qwen-win-04`, `full-playthrough-with-english-logs.mp4`, places gameplay above a synchronized English log panel. It includes all plans, 137 action choices and results, and eight failed actions. It is 1280 × 1080 at 20 fps, retaining the original duration and 16,870 frames. High-frequency camera/position telemetry is reflected in the status panel and retained in raw JSONL. Full decoding and 11 media/log checks passed.
 
-This project uses GPT-6 Astra or GPT-5.6 Sol to plan and JEV to select player actions in Minecraft Java 1.16.5. It uses the official vanilla server and Mineflayer. A read-only Java sensor can report the exact dragon head position. It does not change game rules or entity state. Each selected action is sent to the game through the normal player protocol.
+The English transcript, subtitle track, coverage report, and hashes are stored alongside that export. **`start.ps1` produces the original recording; it does not automatically generate the English-log video.** Videos, evidence archives, and exports are excluded from Git and are not included in a fresh clone.
 
-## Upstream verified result
+The recorder captures the game framebuffer, not the desktop, and has no audio. Review visible text and metadata before publishing. Raw evidence bundles can contain local paths and process configuration and need a separate privacy review.
 
-The latest run, `nether-final-08`, completed in **8 minutes 43.300 seconds**. The previous video took 14 minutes 31.800 seconds. The new run was 40% shorter. The End combat stage took 152 seconds instead of 332 seconds. Dragon flight and landing times can vary between runs.
+## Storage and recoverable cleanup
 
-The agent started with an empty inventory in a fresh Survival/Peaceful world. Astra planned and JEV selected the actions. It used the Nether for travel, killed the dragon with six bed explosions on the first landing, and reached the exit with full health and no deaths. There was no restart, source change, or operator repair during the run.
+New project dependencies, caches, temporary files, Minecraft assets, worlds, and videos live under the repository directory. Place the checkout on the drive you want to use. Existing Node/Python/Java installations and the external model are reused. Existing `.minecraft` assets may be copied after hash verification; its installation and settings are not modified.
 
-The run used 131 JEV decisions and 35 Astra calls. All 17 run checks, eight route/camera/screen checks, and 29 local tests passed. The full earlier video and action log were reviewed before the local tests and new recording.
+Setup performs no global npm/Python package installs, registry edits, service creation, or scheduled tasks. Windows and GPU drivers can still create system caches or pagefile activity outside the project.
 
-Camera control uses continuous turns, with a limit of 240 degrees per second on each axis and acceleration of 960 degrees per second squared. A hidden native Minecraft client renders the game without desktop input. The capture includes health, hunger, hotbar, held items, inventory, crafting, and native animations.
-
-The video is 960 × 540 at 20 frames per second, without audio. A translucent full-width top banner uses Menlo and shows the model names, elapsed time in milliseconds, XYZ coordinates, planner objective, and selected action. These labels use recorded responses and game events.
-
-**Recordings and generated evidence remain local and are excluded from Git.** The local video is `runs/nether-final-08/full-playthrough-banner.mp4`. Its verification, timing comparison, and action log are in the same run directory. This repository contains the code, tests, build scripts, and route data. It does not include Minecraft binaries, downloaded runtimes, saved worlds, or credentials.
-
-## Credentials
-
-Model calls obtain the OpenRouter key from Google Secret Manager and keep it in process memory. The current scripts refer to the original deployment's project and secret name; these names are not credentials. Configure those references for your own project in `model-relay.mjs` and `models.mjs`. For the relay, authenticate with Google application default credentials, grant access to the secret, and set `MODEL_RELAY=http://127.0.0.1:3099` when starting the agent. Do not place keys in source files or run logs.
-
-The native renderer and launch scripts were developed on macOS. Runtime paths and local server settings must be configured for another machine. Historical review notes describe earlier versions; use the current code and the result above for the latest behavior.
-
-## Game settings
-
-- Seed: `8398967436125155523`
-- Mode: Survival
-- Difficulty: Peaceful for this recording
-- Verified active End portal center: `-1130, 34, 856`
-- Main server: `127.0.0.1:25576`
-- Native display: hidden read-only Minecraft client
-- Status: `http://127.0.0.1:3078`
-
-The selected seed has a village, three supply chests with 21 obsidian, and a naturally active End portal. The route uses the Nether as a travel shortcut and requires entry and exit before combat. It does not need blaze rods. This is a useful speedrun seed, not proof of the easiest possible seed. The route was surveyed in a separate test world. Final-run placements and movement use normal player interactions.
-
-## Model roles
-
-The planner sets the current objective, item targets, and a travel waypoint. JEV selects one available action from current game observations. Actions include travel, mining one block, collecting a drop, crafting, opening a chest, eating, sleeping, and combat interactions. Mineflayer handles the movement path and game protocol. This is structured-state control, not control from screenshots or individual key presses. The models can see blocks in loaded chunks. Known seed coordinates are supplied.
-
-Model IDs:
-
-- `openai/gpt-6-astra` (default) or `openai/gpt-5.6-sol` (`PLANNER_MODEL`), through `/api/v1/chat/completions`
-- `typesafe/jev-1.13`, through `/api/alpha/decisions`
-
-The key is loaded into process memory from Google Secret Manager. The general `OPENROUTER_API_KEY` environment variable is ignored to prevent use of an unrelated key. The key is not written to run logs.
-
-## Files and evidence
-
-`runs/<run>/events.jsonl` stores the requests, model responses, selected actions, game results, and completion events. `status.json` stores current progress. A `victory.json` file requires dragon-death evidence and the exit-portal event. Death evidence is either the kill advancement or server-supplied zero health with the dragon dying phase. The Java 1.16.5 exit event uses numeric reason 4. Final review must also check the world DragonFight state and the video. Bed kills can omit the kill advancement.
-
-New recordings use the official Minecraft Java 1.16.5 client. A read-only local protocol mirror sends the game state to this client. The video includes native entity models, textures, movement, digging and hand animations, the hotbar, held item, health, hunger, air, and dragon health. Capture is 960 × 540 at 20 frames per second, without audio. The window is hidden; focus and cursor control are disabled. Capture reads the game frame buffer, not the desktop. The older `recorded-06` video used Prismarine Viewer and a custom HUD.
-
-The `combat-lab` directory is a separate test server. It can use prepared items and positions to test combat code. A combat-lab result does not qualify as a full Survival run.
-
-## Start a run
-
-Install dependencies with `npm install`. Start `server/server.jar` from the `server` directory with a compatible Java runtime. The installed Minecraft Java runtime works for this server.
-
-Use `./start-server.sh` to start the main server with its read-only sensor. For a fresh recording, first choose an unused world name in `server/server.properties`. Use a new log directory with the same name. Start the agent from this directory:
-
-```sh
-node optimization/nether/freeze-run.mjs NEW_RUN
-PLANNER_MODEL=openai/gpt-6-astra RUN_ID=NEW_RUN \
-NATIVE_VIEW=1 WAIT_NATIVE=1 NATIVE_RECORD=1 \
-DRAGON_SENSOR_URL=http://127.0.0.1:3093 node nether-agent.mjs
+```powershell
+.\windows\clean.ps1 -WhatIf       # Preview; no files moved
+.\windows\clean.ps1               # Retain runs and recordings
+.\windows\clean.ps1 -IncludeRuns  # Also move runs and recordings
 ```
 
-When the local mirror is listening on port 25578, start `python3 native-client/launch.py`. The agent waits for the hidden client and recorder before the first action. The native client uses an isolated game directory. It does not change the user's Minecraft settings. The recorder stops after the exit portal event. To stop a test at an action boundary, create `runs/NEW_RUN/stop`. Wait for `full-playthrough.mp4.finished.json` before closing the native client.
+Cleanup checks stopped project processes and validates targets, then moves generated files to `.trash/cleanup-<timestamp>/`. Source and external runtimes/models remain. The default keeps `runs/`, but moves saved server worlds and runtime logs, so archive those first if you need complete evidence. Files remain recoverable in `.trash`; disk space is reclaimed only when you choose to empty it. Rerun setup to restore dependencies.
 
-The native client dependencies are installed with `python3 native-client/install.py`; build the display and capture adapter with `./native-client/build.sh`. The supplied launch script uses its local Java 17 runtime. Model access requires available OpenRouter credit.
+## Development and troubleshooting
 
-A new log directory alone does not reset the world. Stop the server, choose a new unused `level-name`, and start it again with the same seed. Keep the old world as evidence.
+Run existing automated checks with `npm test`. Live Minecraft runs remain necessary to validate rendering, movement, inventory, combat, and recording.
 
-Run `node --test evidence.test.mjs native-mirror.test.mjs optimization/*.test.mjs optimization/pass-2/policy.test.mjs optimization/nether/*.test.mjs` to check completion events, native packets, action policy, and pathfinder cancellation. Live server tests remain necessary for movement, crafting, combat, and recording.
+- **No window:** inspect `.runtime/runs/<run>/supervisor.log` and client/server stderr logs. Successful finalization automatically closes the client.
+- **Model error:** check `/health`, the alias, and `.runtime/config.json`. Start the model service first.
+- **Port in use:** stop its owning process or the previous project run. Project ports are currently fixed in the supervisor.
+- **Java build failure:** use a JDK rather than a JRE, and check `MC_JAVA_HOME`.
+- **Download failure:** restore access to the package/game repositories and rerun setup.
+- **Incomplete run:** retain logs and video, and inspect failed actions and verification rather than describing it as completed.
 
-## Sources
+## Structure and attribution
 
-- [Official TypeSafe introduction and Doom demo](https://typesafe.ai/blog/introducing-system-one-models-and-jev): structured game state, typed decisions, and a real-time action loop.
-- [JEV Minecraft demo](https://www.reddit.com/r/accelerate/comments/1whk9oy/new_typesafe_ai_jev_model_playing_minecraft_wip/): the author describes JEV choices through Mineflayer.
-- [Minecraft demo source](https://github.com/ellistev/typesafe-minecraft-demo): both bounded direct actions and earlier batch actions are documented.
-- [Mario example](https://github.com/fhshaik/typesafe-mario): structured observations and a small legal action set.
-- [StarCraft example](https://github.com/phyous/tsai-sc): bounded actions, recorded model probabilities, and explicit victory checks.
-- [StarCraft Twitter post](https://x.com/literallydenis/status/2100622868878868603): found through the public JEV project index; direct retrieval was blocked by Twitter.
-- [TypeSafe launch Twitter post](https://x.com/CompleteSkeptic/status/2099925682726002904): direct retrieval was blocked.
-- [New seed human speedrun](https://www.speedrun.com/mc/runs/yoex3d0z).
-- [Previous seed report](https://www.reddit.com/r/minecraftseeds/comments/m6vjbd/): Java 1.16 seed and portal coordinates.
-- [One-cycle guide](https://mcsr.info/speedrunning/one-cycle): bed support, cover, and timing.
-- [Mineflayer](https://github.com/PrismarineJS/mineflayer), [Pathfinder](https://github.com/PrismarineJS/mineflayer-pathfinder), and [Prismarine Viewer](https://github.com/PrismarineJS/prismarine-viewer).
-- [Official Astra model documentation](https://developers.openai.com/api/docs/models/gpt-6-astra).
+- [windows/](windows/): Windows setup, supervision, status, stop, and cleanup.
+- [qwen-relay.mjs](qwen-relay.mjs): local requests, schemas, and response validation.
+- [nether-agent.mjs](nether-agent.mjs): game loop and stage progression.
+- [optimization/nether/config.json](optimization/nether/config.json): surveyed route.
+- [native-client/](native-client/): native rendering, UI synchronization, and capture.
+- [observer/](observer/): read-only dragon sensor.
+- [verify-run.mjs](verify-run.mjs): saved-world and recording checks.
 
-## Combat implementation
+Upstream cloud code remains in `models.mjs` and `model-relay.mjs`, using OpenRouter and Google Secret Manager with separate credential configuration. The Windows Qwen workflow needs none of those credentials. Upstream macOS launch/build scripts remain separate from the verified Windows workflow.
 
-`end-combat.mjs` offers one bounded bed attack. JEV chooses the action. The action places one bed, aims at it, and waits for the observed head to enter the attack window before one use command. It aborts if the player loses cover or breath enters cover. The local test improved from 11 to 46 damage per bed after aiming first and tightening the window. A later prepared test used seven beds to kill the dragon and ended with 13 health, without damage protection. Its evidence is `combat-lab/eight-bed-test-03.jsonl`. This test used a local test driver, prepared items, and a prepared dragon approach. The first full sequence with Sol and JEV succeeded in `practice-02`.
-
-`observer/DragonObserver.java` adds a read-only observation call to the server dragon tick. Its HTTP endpoint is local only. Build it with `./build-observer.sh`. No part of this sensor grants items, moves the player, changes health, or changes the dragon AI.
-
-`combat-probe.mjs` is a local test driver hardcoded to port 25577. It does not call either model and must never be presented as a model-controlled run. The `combat-lab` files include prepared positions, items, and other test changes.
-
-The bed timing research also used [AltoClef's bed-combat source](https://github.com/gaucho-matrero/altoclef/blob/main/src/main/java/adris/altoclef/tasks/speedrun/KillEnderDragonWithBedsTask.java). The action implementation in this project is separate.
-
-## Recording and control limits
-
-The final route is fixed in `optimization/nether/config.json`. Astra receives game state and route observations; JEV selects bounded actions. Mineflayer performs pathfinding and timed block interactions. This is not screenshot-only or individual-key control. The native view mirrors the bot state. Its camera uses small turns, and its inventory screens show the current item and cursor state. The final run used no live operator guidance or repairs.
-
-A recording can contain several capture files if the agent needs a code update. Preserve all active gameplay. Mark each update pause in the combined video. Report deaths and pauses; do not describe such a recording as a deathless or uninterrupted run.
-
-The new native video is one continuous capture. Add the information strip with `node overlay.mjs nether-final-02`. Check it with `node verify-run.mjs nether-final-02 nether-final-02 full-playthrough-overlay.mp4`. To rebuild the older viewer video, run `node assemble-video.mjs recorded-06`; check it with `node verify-run.mjs recorded-06`. The raw capture files, action log, video manifest, and world are preserved. The older viewer manifest records its development pauses; those do not apply to the new continuous recording. The overlay marks the exit event as complete. The current code prevents another game action after victory.
-
-A test in the separate lab showed that a long fall into an End portal can carry fall damage into the End. That proposed action was rejected. The recorded player used short, checked downward mining steps instead.
+Built on [Minecraft Agent](https://github.com/rmalde/minecraft-agent), [Mineflayer](https://github.com/PrismarineJS/mineflayer), [Mineflayer Pathfinder](https://github.com/PrismarineJS/mineflayer-pathfinder), and [llama.cpp](https://github.com/ggml-org/llama.cpp). Minecraft binaries, downloaded weights, worlds, and recordings are not distributed in this repository.
