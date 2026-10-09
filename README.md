@@ -8,6 +8,18 @@ and every bounded action choice. JSON schemas constrain the responses. The game
 still uses the upstream fixed seed, surveyed Nether route, vanilla Survival on
 Peaceful, and read-only dragon sensor; this is not a random-seed benchmark.
 
+The local run `qwen-win-04` completed in **13 minutes 55.391 seconds** from
+recording start to the exit event. Qwen supplied 16 plans and all 137 action
+choices. Six bed blasts killed the dragon; the player exited with full health
+and no deaths. The continuous native video is **14 minutes 3.500 seconds**,
+960×540 at 20 fps, without audio. All 18 full-run checks and eight route/camera/UI
+checks passed, including full video decoding, saved-world dragon state, fresh
+empty inventory, both Qwen model identities, and unchanged run source.
+The run had eight failed actions that recovered through subsequent model
+choices. No operator repair or restart occurred within this successful run.
+Its local video and evidence are in `runs/qwen-win-04/`; generated artifacts
+remain excluded from Git.
+
 With existing Node 22+, Python, and a Java 17 JDK on PATH, run:
 
 ```powershell
@@ -52,7 +64,7 @@ dependencies. The project does not modify your existing `.minecraft` installatio
 
 This project uses GPT-6 Astra or GPT-5.6 Sol to plan and JEV to select player actions in Minecraft Java 1.16.5. It uses the official vanilla server and Mineflayer. A read-only Java sensor can report the exact dragon head position. It does not change game rules or entity state. Each selected action is sent to the game through the normal player protocol.
 
-## Latest verified result
+## Upstream verified result
 
 The latest run, `nether-final-08`, completed in **8 minutes 43.300 seconds**. The previous video took 14 minutes 31.800 seconds. The new run was 40% shorter. The End combat stage took 152 seconds instead of 332 seconds. Dragon flight and landing times can vary between runs.
 
