@@ -24,7 +24,7 @@ Qwen service, then run:
 .\windows\stop.ps1
 ```
 
-Each start uses a fresh run and world name. The hidden native Java 1.16.5 client
+Each start uses a fresh run and world name. The visible native Java 1.16.5 client
 records its framebuffer at 960×540 / 20 fps without moving your desktop cursor.
 Raw continuous video, game events, and victory verification are in `runs/<run>/`.
 The supervisor saves the world and finalizes the video before stopping its own

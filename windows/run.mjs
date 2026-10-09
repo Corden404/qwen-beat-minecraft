@@ -4,6 +4,7 @@ import net from 'node:net';
 import {spawn,execFileSync} from 'node:child_process';
 import {once} from 'node:events';
 import {fileURLToPath} from 'node:url';
+import {format} from 'node:util';
 
 const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));process.chdir(root);
 const run=process.argv[2]||'qwen-'+new Date().toISOString().replace(/[:.]/g,'-');
@@ -12,6 +13,9 @@ const config=JSON.parse(fs.readFileSync('.runtime/config.json'));
 if(!fs.existsSync('server/eula.txt')||!/^eula=true\s*$/m.test(fs.readFileSync('server/eula.txt','utf8')))throw Error('Accept the Minecraft EULA in server/eula.txt before starting: https://aka.ms/MinecraftEULA');
 if(fs.existsSync('runs/'+run)||fs.existsSync('server/'+run))throw Error('Use a fresh run/world name');
 const runtimeDir='.runtime/runs/'+run;fs.mkdirSync(runtimeDir,{recursive:true});
+// Own the log file directly; a short-lived PowerShell launcher cannot drain pipes.
+console.log=(...args)=>fs.appendFileSync(runtimeDir+'/supervisor.log',new Date().toISOString()+' '+format(...args)+'\n');
+console.error=console.log;
 const children=new Map();let stopping=false;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitFor(predicate,ms,label){const until=Date.now()+ms;while(Date.now()<until){if(await predicate())return;for(const [name,child] of children)if(child.exitCode!==null)throw Error(name+' exited during startup; inspect '+runtimeDir+'/'+name+'.stderr.log');await sleep(500);}throw Error(label+' timed out');}
@@ -24,7 +28,8 @@ function launch(name,exe,args,{cwd=root,env={}}={}) {
   child.on('error',e=>console.error(name,e));return child;
 }
 function archiveControl(file){if(fs.existsSync(file)){const dest=path.join('.trash','startup-'+run,file);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.renameSync(file,dest);}}
-async function finishChild(name,ms=15000){const child=children.get(name);if(!child||child.exitCode!==null)return;await Promise.race([once(child,'exit'),sleep(ms)]);if(child.exitCode===null){child.kill();await Promise.race([once(child,'exit'),sleep(5000)]);}}
+async function waitExit(child,ms){let timer;try{await Promise.race([once(child,'exit'),new Promise(resolve=>{timer=setTimeout(resolve,ms);})]);}finally{clearTimeout(timer);}}
+async function finishChild(name,ms=15000){const child=children.get(name);if(!child||child.exitCode!==null)return;await waitExit(child,ms);if(child.exitCode===null){child.kill();await waitExit(child,5000);}}
 async function shutdown(reason){
   if(stopping)return;stopping=true;console.log('Stopping:',reason);
   if(fs.existsSync('runs/'+run))fs.writeFileSync('runs/'+run+'/stop',reason);

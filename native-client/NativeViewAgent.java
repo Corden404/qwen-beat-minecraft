@@ -4,11 +4,11 @@ public class NativeViewAgent {
  public static void premain(String args,Instrumentation inst){
   inst.addTransformer(new ClassFileTransformer(){public byte[] transform(ClassLoader loader,String name,Class<?> cls,ProtectionDomain domain,byte[] bytes){
    if(!name.equals("org/lwjgl/glfw/GLFW")&&!name.equals("djz")&&!name.equals("dnt"))return null;
-   try{ClassPool pool=new ClassPool(true);pool.appendClassPath(new LoaderClassPath(loader));CtClass c=pool.makeClass(new java.io.ByteArrayInputStream(bytes));if(name.equals("org/lwjgl/glfw/GLFW")){for(CtMethod m:c.getDeclaredMethods("glfwSetWindowIcon"))m.setBody("{}");for(CtMethod m:c.getDeclaredMethods("glfwShowWindow"))m.setBody("{}");
+    try{ClassPool pool=new ClassPool(true);pool.appendClassPath(new LoaderClassPath(loader));CtClass c=pool.makeClass(new java.io.ByteArrayInputStream(bytes));if(name.equals("org/lwjgl/glfw/GLFW")){for(CtMethod m:c.getDeclaredMethods("glfwSetWindowIcon"))m.setBody("{}");if(!Boolean.getBoolean("agent.visible"))for(CtMethod m:c.getDeclaredMethods("glfwShowWindow"))m.setBody("{}");
    for(CtMethod m:c.getDeclaredMethods("glfwFocusWindow"))m.setBody("{}");
    for(CtMethod m:c.getDeclaredMethods("glfwSetCursorPos"))m.setBody("{}");
    for(CtMethod m:c.getDeclaredMethods("glfwSetInputMode"))m.insertBefore("{if($2==0x00033001)return;}");
-   for(CtMethod m:c.getDeclaredMethods("glfwCreateWindow"))m.insertBefore("{glfwWindowHint(0x00020004,0);}");
+    if(!Boolean.getBoolean("agent.visible"))for(CtMethod m:c.getDeclaredMethods("glfwCreateWindow"))m.insertBefore("{glfwWindowHint(0x00020004,0);}");
     if(System.getProperty("os.name").toLowerCase().contains("mac"))c.getDeclaredMethod("glfwInit").insertBefore("{glfwInitHint(0x00051002,0);}");
    c.getDeclaredMethod("glfwSwapBuffers").insertBefore("{local.agentview.FrameCapture.frame($1);}");}
    if(name.equals("djz")){c.getDeclaredMethod("s",new CtClass[0]).setBody("{return true;}");c.getDeclaredMethod("a",new CtClass[]{pool.get("don")}).insertAfter("{if($1==null)local.agentview.FrameCapture.resourcesReady();}");}
