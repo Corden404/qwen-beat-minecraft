@@ -128,20 +128,10 @@ optimization/seed-route.svg
 .trash/
 native-client/native-preview*.png
 
-# Local conversation notes, operator feedback, and experiment reports
-/feedback.txt
-/optimization/COMPARISON.md
-/optimization/NOTES.md
-/optimization/breath-replay.json
-/optimization/eyes/CONTINUE.md
-/optimization/eyes/SESSION-NOTES-20260919-0903.md
-/optimization/eyes/SESSION-NOTES-20260919-0924.md
-/optimization/feedback.txt
-/optimization/nether/REVIEW.md
-/optimization/pass-2/RESULT.md
-/optimization/pass-2/REVIEW.md
-/optimization/pass-2/astra-probe.json
-/optimization/pass-2/bed-replay.json
-/optimization/pass-2/boat-results.json
-/optimization/route-summary.json
-/research/minecraft-demo.md
+# Personal AI conversations and local session metadata
+.codex/
+.agents/
+conversations/
+chat-history/
+transcripts/
+session-notes/
