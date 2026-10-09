@@ -8,6 +8,7 @@ import {selectUsefulOptions} from './optimization/policy.mjs';
 import {installCursorSync,recoverCursor} from './inventory-recovery.mjs';
 import {toolRecovery} from './tool-recovery.mjs';
 import {nearbyNavigationBlocks} from './mining-tools.mjs';
+import {checkedDescentLanding,descendColumn} from './column-travel.mjs';
 import {installInventoryDisplay} from './inventory-display.mjs';
 import mineflayer from 'mineflayer';import pf from 'mineflayer-pathfinder';import {Vec3} from 'vec3';import fs from 'node:fs';import http from 'node:http';
 import {route,vec,kitNeeds,bedCount,navigationMaterials,navigationCount,portalActions,placeAt,solid} from './nether-route.mjs';import {installCameraControl} from './camera-control.mjs';import {installNativeMirror} from './native-mirror.mjs';import {startNativeRecording} from './native-record.mjs';import {decide,plan,plannerModel,plannerName,controllerName} from './models.mjs';import {endCombatActions,observedDragon} from './end-combat.mjs';import {battleObservation,updateDragonSensor} from './extra-actions.mjs';import {dragonDeathState,gameWon} from './evidence.mjs';
@@ -46,7 +47,10 @@ function candidates(){const out=[],add=(key,description,fn)=>{if((failed.get(key
  if(s==='entry')portalActions(bot,add,route.entryPortal,{go,bounded,item,segment},'entry');
  if(s==='nether'){
   const stand=new Vec3(-139,41,103),waypoints=(route.netherTravel||[{x:-139,y:41,z:98}]).map(vec);bot.netherLeg??=0;while(bot.netherLeg<waypoints.length-1&&p.distanceTo(waypoints[bot.netherLeg].offset(.5,0,.5))<2.5)bot.netherLeg++;const target=waypoints[bot.netherLeg];
-  if(bot.netherLeg<waypoints.length-1||p.distanceTo(target)>3&&p.distanceTo(stand)>4)add('nether_travel','Follow a normal walking and digging path to the surveyed Nether exit approach '+target,async()=>{const before=bot.entity.position.clone();try{await go(target,1,15000);}catch(e){if(bot.entity.position.distanceTo(before)<2)throw e;return 'Made progress through the Nether';}});
+  if(bot.netherLeg<waypoints.length-1||p.distanceTo(target)>3&&p.distanceTo(stand)>4){
+   if(Math.hypot(p.x-target.x-.5,p.z-target.z-.5)<3&&p.y>target.y+1&&checkedDescentLanding(bot))add('nether_descend','Mine downward through checked solid landings toward Nether waypoint '+target,async()=>{const before=bot.entity.position.clone();try{return await descendColumn(bot,target.y,log);}catch(e){if(before.y-bot.entity.position.y<1)throw e;return 'Made checked descent progress through the Nether';}});
+   else add('nether_travel','Follow a normal walking and digging path to the surveyed Nether exit approach '+target,async()=>{const before=bot.entity.position.clone();try{await go(target,1,15000);}catch(e){if(bot.entity.position.distanceTo(before)<2)throw e;return 'Made progress through the Nether';}});
+  }
   else{
    const bridge=Array.from({length:5},(_,j)=>new Vec3(-139,40,99+j)),missing=bridge.find(q=>!solid(bot.blockAt(q)));
    if(missing){const material=navigationMaterials.find(n=>item(n));add('bridge_'+missing,'Place one safe approach block toward the Nether exit at '+missing,()=>placeAt(bot,missing,material,go));}
