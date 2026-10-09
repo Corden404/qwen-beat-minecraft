@@ -172,4 +172,4 @@ node verify-run.mjs qwen-demo-01 qwen-demo-01
 
 上游云端模型代码保留在 `models.mjs` 和 `model-relay.mjs`，使用 OpenRouter 与 Google Secret Manager，需要独立配置凭据。Windows Qwen 流程不需要这些凭据。上游 macOS 启动、编译脚本与已验证的 Windows 流程分别使用。
 
-感谢 [Minecraft Agent](https://github.com/rmalde/minecraft-agent)、[Mineflayer](https://github.com/PrismarineJS/mineflayer)、[Mineflayer Pathfinder](https://github.com/PrismarineJS/mineflayer-pathfinder) 和 [llama.cpp](https://github.com/ggml-org/llama.cpp)。本仓库不分发 Minecraft 二进制、下载的模型权重、世界存档或录像。
+感谢 [Minecraft Agent](https://github.com/rmalde/minecraft-agent)、[Mineflayer](https://github.com/PrismarineJS/mineflayer)、[Mineflayer Pathfinder](https://github.com/PrismarineJS/mineflayer-pathfinder) 和 [llama.cpp](https://github.com/ggml-org/llama.cpp)。
