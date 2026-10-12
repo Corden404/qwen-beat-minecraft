@@ -41,6 +41,7 @@ build/
 *.png
 *.jpg
 *.jpeg
+!docs/images/playthrough-*.jpg
 *.gif
 *.wav
 *.mp3

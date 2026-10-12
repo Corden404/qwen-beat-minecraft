@@ -33,6 +33,16 @@ Qwen 根据结构化游戏状态，从有限的合法动作中选择；Mineflaye
 
 18 项全流程验证和 8 项额外的路线、相机、界面检查全部通过。证据包含完整视频解码、世界存档中的末影龙状态、初始空背包、模型身份记录和运行源码哈希。这是一轮已验证的成功运行；此前失败试跑仍保留在本地，不能将这一结果当作成功率统计。
 
+## 通关录像截图
+
+以下画面截取自 `qwen-win-04` 的原始录像，时间戳以视频开始为起点。
+
+| 村庄收集物资 · 01:00 | 下界行进 · 05:00 |
+| --- | --- |
+| ![在村庄收集通关物资](docs/images/playthrough-village.jpg) | ![在下界搭建行进路径](docs/images/playthrough-nether.jpg) |
+| 末影龙死亡动画 · 13:49 | 返回主世界 · 14:00 |
+| ![击败末影龙后的死亡动画](docs/images/playthrough-dragon.jpg) | ![通过返回传送门后回到主世界](docs/images/playthrough-complete.jpg) |
+
 ## 环境要求
 
 - Windows 与 PowerShell；提供的 Windows 流程已在本机验证。

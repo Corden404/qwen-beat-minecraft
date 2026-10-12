@@ -33,6 +33,16 @@ The preserved run `qwen-win-04` completed with these results:
 
 All 18 full-run verification checks and eight additional route/camera/UI checks passed. Evidence includes complete video decoding, saved-world dragon state, a fresh empty inventory, recorded model identities, and source hashes. This is one verified successful run; earlier failed trials remain local. It is not a measured success rate.
 
+## Playthrough screenshots
+
+Frames from the original `qwen-win-04` recording, with timestamps measured from the video start.
+
+| Village supplies · 01:00 | Nether traversal · 05:00 |
+| --- | --- |
+| ![Collecting supplies in the village](docs/images/playthrough-village.jpg) | ![Building a path through the Nether](docs/images/playthrough-nether.jpg) |
+| Dragon death animation · 13:49 | Back in the Overworld · 14:00 |
+| ![The defeated Ender Dragon's death animation](docs/images/playthrough-dragon.jpg) | ![Returned to the Overworld after reaching the exit portal](docs/images/playthrough-complete.jpg) |
+
 ## Requirements
 
 - Windows and PowerShell; the supplied Windows workflow was verified locally.
